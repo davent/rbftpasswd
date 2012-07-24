@@ -1,0 +1,132 @@
+#!/usr/bin/env ruby
+# 1.9 adds realpath to resolve symlinks; 1.8 doesn't
+# have this method, so we add it so we get resolved symlinks
+# and compatibility
+unless File.respond_to? :realpath
+  class File #:nodoc:
+    def self.realpath path
+      return realpath(File.readlink(path)) if symlink?(path)
+      path
+    end
+  end
+end
+$: << File.expand_path(File.dirname(File.realpath(__FILE__)) + '/../lib')
+require 'rubygems'
+require 'gli'
+require 'rbftpasswd_version'
+require "highline/import"
+
+include GLI
+
+program_desc 'Manage ProFTPd password file'
+
+version Rbftpasswd::VERSION
+
+config_file '.rbpasswd.rc'
+
+desc 'Make output more verbose'
+switch [:v,:verbose]
+
+desc 'Force creationg of password file'
+switch [:force]
+
+desc 'Add a new user'
+arg_name 'username'
+command :adduser do |c|
+  #c.desc 'Describe a switch to adduser'
+  #c.switch :s
+
+  c.desc 'Password file'
+  c.default_value 'ftpd.passwd'
+  c.flag :f
+
+  c.desc 'User ID'
+  c.default_value 33
+  c.flag :u
+
+  c.desc 'Group ID'
+  c.default_value 33
+  c.flag :g
+
+  c.desc 'Home Directory'
+  c.default_value '/home'
+  c.flag :h
+
+  c.desc 'shell'
+  c.default_value '/bin/false'
+  c.flag :s
+
+  c.action do |global_options,options,args|
+
+	username = args[0]
+	uid = options[:u]
+	gid = options[:g]
+	home = options[:h]
+	shell = options[:s]
+	file = options[:f]
+
+	unless username then raise "You need to specify a username" end
+
+	passwd = ask( "Password: " ) { |q| q.echo = false }
+	passwd2 = ask( "Re-enter Password: " ) { |q| q.echo = false }
+
+	if passwd != passwd2
+		raise "Password do not match"
+        end
+
+	# Your command logic here
+	if global_options[:v] then
+		puts "Adding new user #{args[0]} with UID #{uid}, GID #{gid}, Home Directory: #{home}, Shell: #{shell} to file: #{file}"
+	end
+
+	#if passwd file does not exist shall we force create it?
+	unless File.exists?( file )
+		if global_options[:force]
+			FileUtils.touch file
+		end
+	end
+
+	Rbftpasswd.new_user( file, username, passwd, uid, gid, home, shell )
+
+     
+    # If you have any errors, just raise them
+    # raise "that command made no sense"
+  end
+end
+
+desc 'Delete an existing user'
+arg_name 'NOT CURRENTLY AVAILABLE'
+command :deluser do |c|
+  c.action do |global_options,options,args|
+  end
+end
+
+desc 'Modify an existing user'
+arg_name 'NOT CURRENTLY AVAILABLE'
+command :moduser do |c|
+  c.action do |global_options,options,args|
+  end
+end
+
+pre do |global,command,options,args|
+  # Pre logic here
+  # Return true to proceed; false to abort and not call the
+  # chosen command
+  # Use skips_pre before a command to skip this block
+  # on that command only
+  true
+end
+
+post do |global,command,options,args|
+  # Post logic here
+  # Use skips_post before a command to skip this
+  # block on that command only
+end
+
+on_error do |exception|
+  # Error logic here
+  # return false to skip default error handling
+  true
+end
+
+exit GLI.run(ARGV)

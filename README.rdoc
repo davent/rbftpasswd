@@ -1,0 +1,8 @@
+= rbftpasswd
+
+Manage ProFTPd password file.
+
+Inspired by TJ Saunders <tj@castaglia.org> ftpasswd Perl script (http://www.castaglia.org/proftpd/contrib/ftpasswd)
+
+:include:rbftpasswd.rdoc
+
